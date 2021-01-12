@@ -28,7 +28,7 @@ switch kernelchoice
         alpha = 0;                      
     case 2
         QSMParams.kernel = 'SMV';      
-        QSMParams.radiusArray = 1:3;    % for SMV only, if using radius of 1 should be equivalent to Lap
+        QSMParams.radiusArray = 1:15;    % for SMV only, if using radius of 1 should be equivalent to Lap
 end
 
 maxit = 300;
