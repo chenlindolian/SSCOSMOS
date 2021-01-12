@@ -78,9 +78,4 @@ save([filenameSave, '.mat'], 'chi_mo',  'itn',  'maskErode');
 
 saveNII(chi_mo_mean, filenameSave, QSMParams, 1);   
 
-dispFlag = 1;
-if dispFlag == 1
-     plot3plane(permute(chi_mo_mean, [2,1,3]), 113, 90, 72, -0.15, 0.15, 0, 1);                       
-     plot3plane(permute(chi_mo_mean-chi_tissue_ref, [2,1,3]), 113, 90, 72, -0.15, 0.15, 0, 1);         
-end
 
