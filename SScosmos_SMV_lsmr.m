@@ -34,13 +34,21 @@ voxel_size = QSMParams.voxSize;
 fittingDataArray = zeros([N, OriNum]);
 
 Maskarray = zeros([N, OriNum]);
+
+mask_eval = ones(N);
 for OriInd = 1:OriNum
     switch QSMParams.dataType
         case {0} % for simulation
              S = load(QSMParams.filenamePhase{OriInd});
-             GREPhase = S.PhaseUnwrap;
-             Mask = S.BrainMask;
+             GREPhase = S.PhaseUnwrap; % or use Phase to unwrap with different phase unwrapping method
+             BrainMask = imerode3(S.BrainMask, 1);      % boundary inconsistancy   
+             mask_unrelyPhase = create_mask_unrelyPhase(S.GREPhase, pi/3);   % mask threshold may need to change
+
+             BrainMask = BrainMask.*(BrainMask - mask_unrelyPhase);
+             BrainMask = imfill3(BrainMask);
+             Mask = BrainMask; % reliable mask of phase             Mask = S.BrainMask;
              GREMag = S.GREMag;
+             
         case {1} % for huamn brain
              nii = load_untouch_nii(QSMParams.filenamePhase{OriInd});
              GREPhase = nii.img;
@@ -57,11 +65,12 @@ for OriInd = 1:OriNum
              S = load(QSMParams.filenameCoregParams{OriInd});
     end
     
+  
   Params = S.Params;
     
   Params.D = ifftshift(conv_kernel_rot_c0(Params,Params.TAng));
     
-  Params.C = 1./(2*pi*Params.gamma*Params.B0)*1e6;
+  Params.C = 1./(2*pi*Params.TEs.*Params.gamma*Params.B0)*1e6;
 
   min_radius = min(QSMParams.radiusArray);
   max_radius = max(QSMParams.radiusArray);
@@ -98,19 +107,25 @@ for OriInd = 1:OriNum
    end
    
     
-    QSMParams.WeightEcho = 1:Params.nEchoes;
-    
-    Params.Weight = sqrt(sum(single(GREMag(:,:,:,QSMParams.WeightEcho)).^2, 4));
+  switch QSMParams.dataType
+      case {0}
+         Params.Weight = ones(N);
+      case {1}
+         QSMParams.WeightEcho = 1:Params.nEchoes;
 
-    Params.Weight = Params.Weight.*Maskarray(:,:,:,OriInd);
-    Params.Weight = Params.Weight./mean(tovec(Params.Weight(Maskarray(:,:,:,OriInd) > 0)));
+         Params.Weight = sqrt(sum(single(GREMag(:,:,:,QSMParams.WeightEcho)).^2, 4));
+
+         Params.Weight = Params.Weight.*Mask;
+         Params.Weight = Params.Weight./mean(tovec(Params.Weight(Mask > 0)));
+
+   end
     
 
     ParamsArray{OriInd} = Params;
   
 end
 
-mask_eval = sum(Maskarray, 4) >= 2;
+mask_eval = sum(Maskarray, 4) >= 3;
 %% using lsmr method 
 
 VoxNum = prod(N);
@@ -142,8 +157,8 @@ function y = afun(x,transp_flag)
             temp = reshape(temp, N);            
                     
             output = zeros(size(temp));
-            for ii = 1:num_kernel
-                output = output + ifftn(Params.D.*outSMV.SMV_kernelconj(:,:,:,ii).*fftn(temp.*outSMV.SMV_mask(:,:,:,ii)));
+            for ii = 1:numKernel
+                output = output + ifftn(Params.D.*outSMV.SMV_kernel_conj(:,:,:,ii).*fftn(temp.*outSMV.SMV_mask(:,:,:,ii)));
             end
 
            y = y + output(:); 
@@ -159,7 +174,7 @@ function y = afun(x,transp_flag)
             Params = ParamsArray{orient_i}; 
             DFx = Params.D.*fftn(x);
             temp = zeros(size(x));
-            for ii = 1:num_kernel
+            for ii = 1:numKernel
                 temp = temp + outSMV.SMV_mask(:,:,:,ii).*ifftn(outSMV.SMV_kernel(:,:,:,ii).*DFx);    
             end
             
