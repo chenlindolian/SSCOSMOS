@@ -1,5 +1,5 @@
 clc,clear all
-addpath('~/Desktop/SSCOSMOS/sharecode/SSCOSMOS/SimulationData/');
+addpath('~/SimulationData/');
 %% load in QSMParams
 OriNum = 3;
 FileStrAppArray = cell(OriNum, 1);
