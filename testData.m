@@ -1,4 +1,4 @@
-clc,clear all
+
 addpath('~/SimulationData/');
 %% load in QSMParams
 OriNum = 3;
