@@ -29,6 +29,7 @@ OriNum = QSMParams.OriNum;
 ParamsArray = cell(OriNum, 1);
 
 N = QSMParams.sizeVol;
+voxel_size = QSMParams.voxSize;
 
 fittingDataArray = zeros([N, OriNum]);
 
@@ -41,8 +42,15 @@ for OriInd = 1:OriNum
         case {0} % for simulation
              S = load(QSMParams.filenamePhase{OriInd});
              GREPhase = S.GREPhase;
-             Mask = S.BrainMask;
+           
              GREMag = S.GREMag;
+             BrainMask = imerode3(S.BrainMask, 1);      % boundary inconsistancy   
+             mask_unrelyPhase = create_mask_unrelyPhase(S.GREPhase, pi/3);   % mask threshold may need to change
+ 
+             BrainMask = BrainMask.*(BrainMask - mask_unrelyPhase);
+             BrainMask = imfill3(BrainMask);
+             Mask = BrainMask; % reliable mask of phase
+                
         case {1} % for huamn brain
              S = load(QSMParams.filenameCoregParams{OriInd});
              
@@ -66,7 +74,7 @@ for OriInd = 1:OriNum
     
  Params.D = ifftshift(conv_kernel_rot_c0(Params,Params.TAng));
     
- Params.C = 1./(2*pi*Params.gamma*Params.B0)*1e6;
+ Params.C = 1./(2*pi*Params.TEs.*Params.gamma*Params.B0)*1e6;
   
        
    if Params.nEchoes > 1
@@ -82,29 +90,35 @@ for OriInd = 1:OriNum
         fittingDataArray(:,:,:,OriInd) = LapPhase(GREPhase, kernel2).*Params.C;                        
    end
    
+ switch QSMParams.dataType
+    case {0}
+        Params.Weight = ones(N);
+    case {1}    
+        QSMParams.WeightEcho = 1:Params.nEchoes;
     
-    QSMParams.WeightEcho = 1:Params.nEchoes;
+        Params.Weight = sqrt(sum(single(GREMag(:,:,:,QSMParams.WeightEcho)).^2, 4));
+
+        Params.Weight = Params.Weight.*Mask;
+        Params.Weight = Params.Weight./mean(tovec(Params.Weight(Mask > 0)));
     
-    Params.Weight = sqrt(sum(single(GREMag(:,:,:,QSMParams.WeightEcho)).^2, 4));
-
-    Params.Weight = Params.Weight.*Mask;
-    Params.Weight = Params.Weight./mean(tovec(Params.Weight(Mask > 0)));
-
+ end  
     ParamsArray{OriInd} = Params;
-   
 end
-
 
 %% using lsmr method 
 
 VoxNum = prod(N);
 b = zeros(OriNum*VoxNum, 1, 'single');
 
+outSMV = mycreate_SMVkernel(mask_eval, 1, 1, 1, N, voxel_size);
+mask_eval = sum(outSMV.SMV_mask, 4);
+
 for OriInd = 1:OriNum     
     Params = ParamsArray{OriInd}; 
-    temp = Params.Weight.*fittingDataArray(:,:,:,OriInd); 
+    temp = mask_eval.*Params.Weight.*fittingDataArray(:,:,:,OriInd); 
     b(((OriInd - 1)*VoxNum+1) : OriInd*VoxNum) = temp(:);
 end
+
 disp('solving QSM sscosmos inverse problem using lsmr ...');
 tic
 lambda = 0;
