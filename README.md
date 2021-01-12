@@ -1,14 +1,12 @@
 # SSCOSMOS
 **SMV kernel and Laplacian kernel based SSCOSMOS**
 
-SSCOSMOS was developed for single step COSMOS (SSCOSMOS) to jointly perform background field removal and dipole inversion with multiple orientation sampling, which could serve as a better standard for gauging SSQSM methods. It is incorporated  multiple spherical mean value (SMV) kernels of various radii with the dipole inversion in SSCOSMOS. 
+(paper link)
 
-We also incorporated Laplacian kernel with the dipole inversion in SSCOSMOS, the phase unwrapping procedure can also be integrated into single-step QSM.
+Single-step calculation of susceptibility with multiple orientation sampling (SS-COSMOS) was developed to jointly perform background field removal and COSMOS dipole inversion, which could serve as a better standard than traditional multi-step COSMOS (MS-COSMOS) for gauging single-orientation single-step quantitative susceptibilty mapping (SSQSM) methods. 
 
+Two types of SSCOSMOS are tested and availabe here, i.e. SMV-kernel-based SSCOSMOS (with varialbe spherical-mean-value kernels), and Laplacian-kernel-based SSCOSMOS. The input should be MRI phase data acquired with GRE sequence at three or more head orientations.
 
-- **SScosmos_Lap_lsmr.m** conduct Laplacian kernel based SSCOSMOS, the input is the raw wrapped phase.
-- **SScosmos_SMV_lsmr.m** conduct SMV kernel based SSCOSMOS, the input is the unwrapped phase
-
-The input data should be acquired at three or more head orientations which can be reconstructed for better performance than traditional multi-step COSMOS.
-
-**testData.m** gives the example for Laplacian and SMV kernel based SSCOSMOS using simulation data.
+- **SScosmos_SMV_lsmr.m** conducts SMV kernel based SSCOSMOS, the input needs to be unwrapped phase
+- **SScosmos_Lap_lsmr.m** conducts Laplacian kernel based SSCOSMOS, the input can be raw wrapped phase.
+- **testData.m** gives example usage of the Laplacian and SMV kernel based SSCOSMOS with some simulated phase data.
