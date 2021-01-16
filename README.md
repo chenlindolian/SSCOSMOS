@@ -9,4 +9,5 @@ Two types of SSCOSMOS are tested and availabe here, i.e. SMV-kernel-based SSCOSM
 
 - **SScosmos_SMV_lsmr.m** conducts SMV kernel based SSCOSMOS, the input needs to be unwrapped phase.
 - **SScosmos_Lap_lsmr.m** conducts Laplacian kernel based SSCOSMOS, the input can be raw wrapped phase.
+
 - **testData.m** gives example usage of the Laplacian and SMV kernel based SSCOSMOS with simulated phase data.

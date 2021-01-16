@@ -10,7 +10,7 @@ function  [chi_mo, itn, mask_eval] = SScosmos_SMV_lsmr(QSMParams, maxit, tol)
 % Input:  
 %       QSMParams includes fields:
 %       OriNum: Orientation Number
-%       radiusArray: Number of SMV kernels         
+%       radiusArray: Radius of SMV kernels         
 %       filenamePhase:  cell array containing the filenames of Coregistered Unwrapped phase 
 %       filenameMag: cell array containing the filenames of Coregistered magnitude
 %       filenameCoregParams: cell array containing the filenames of scan
@@ -32,15 +32,13 @@ N = QSMParams.sizeVol;
 voxel_size = QSMParams.voxSize;
 
 fittingDataArray = zeros([N, OriNum]);
-
 Maskarray = zeros([N, OriNum]);
 
-mask_eval = ones(N);
 for OriInd = 1:OriNum
     switch QSMParams.dataType
         case {0} % for simulation
              S = load(QSMParams.filenamePhase{OriInd});
-             GREPhase = S.PhaseUnwrap; % or use Phase to unwrap with different phase unwrapping method
+             GREPhase = S.PhaseUnwrap; % or use Phase unwrapped with different phase unwrapping methods
              BrainMask = imerode3(S.BrainMask, 1);      % boundary inconsistancy   
              mask_unrelyPhase = create_mask_unrelyPhase(S.GREPhase, pi/3);   % mask threshold may need to change
 
@@ -64,29 +62,24 @@ for OriInd = 1:OriNum
              
              S = load(QSMParams.filenameCoregParams{OriInd});
     end
-    
   
-  Params = S.Params;
+    Params = S.Params;
+    Params.D = ifftshift(conv_kernel_rot_c0(Params,Params.TAng));
+    Params.C = 1./(2*pi*Params.TEs.*Params.gamma*Params.B0)*1e6;
     
-  Params.D = ifftshift(conv_kernel_rot_c0(Params,Params.TAng));
-    
-  Params.C = 1./(2*pi*Params.TEs.*Params.gamma*Params.B0)*1e6;
+    min_radius = min(QSMParams.radiusArray);
+    max_radius = max(QSMParams.radiusArray);
+    step_size_radius = QSMParams.radiusArray(2) - QSMParams.radiusArray(1);                                                
+    outSMV = mycreate_SMVkernel(Mask, min_radius, max_radius, step_size_radius, N, voxel_size); % creat SMV kernels
 
-  min_radius = min(QSMParams.radiusArray);
-  max_radius = max(QSMParams.radiusArray);
-  step_size_radius = QSMParams.radiusArray(2) - QSMParams.radiusArray(1);                                                
-  outSMV = mycreate_SMVkernel(Mask, min_radius, max_radius, step_size_radius, N, voxel_size); % creat SMV kernels
-
-  numKernel = size(outSMV.SMV_kernel,4);
-
-  Maskarray(:,:,:,OriInd) = sum(outSMV.SMV_mask,4);
-
-  outSMV.SMV_kernel_conj=conj(outSMV.SMV_kernel);
+    numKernel = size(outSMV.SMV_kernel,4);
+    Maskarray(:,:,:,OriInd) = sum(outSMV.SMV_mask,4);
+    outSMV.SMV_kernel_conj=conj(outSMV.SMV_kernel);
        
-   if Params.nEchoes > 1
-      temp = zeros(N);
-      weight = AverageEchoWeight(GREMag,Params.TEs);
-         for echoii = 1:Params.nEchoes 
+    if Params.nEchoes > 1
+        temp = zeros(N);
+        weight = AverageEchoWeight(GREMag,Params.TEs);
+        for echoii = 1:Params.nEchoes 
             GREphase = GREPhase(:,:,:,echoii);
             Fphi = fftn(GREphase);
             phasetemp = zeros(N);
@@ -94,20 +87,20 @@ for OriInd = 1:OriNum
                 phasetemp = phasetemp + outSMV.SMV_mask(:,:,:,kk).*ifftn(outSMV.SMV_kernel(:,:,:,kk).*Fphi);
             end
             temp = temp + phasetemp.*weight(:,:,:,echoii);
-         end
+        end
         temp = temp./(sum(weight,4)+0.00001); % averaging
         fittingDataArray(:,:,:,OriInd) = temp.*Params.C; 
-   else
-          phasetemp = zeros(N);     
-          Fphi = fftn(GREPhase);
-          for kk = 1:numKernel
-              phasetemp = phasetemp +  outSMV.SMV_mask(:,:,:,kk).* ifftn(outSMV.SMV_kernel(:,:,:,kk).*Fphi);  
-          end
-          fittingDataArray(:,:,:,OriInd) = phasetemp.*Params.C;                         
-   end
+    else
+        phasetemp = zeros(N);     
+        Fphi = fftn(GREPhase);
+        for kk = 1:numKernel
+          phasetemp = phasetemp +  outSMV.SMV_mask(:,:,:,kk).* ifftn(outSMV.SMV_kernel(:,:,:,kk).*Fphi);  
+        end
+        fittingDataArray(:,:,:,OriInd) = phasetemp.*Params.C;                         
+    end
    
-    
-  switch QSMParams.dataType
+    % weight
+    switch QSMParams.dataType
       case {0}
          Params.Weight = ones(N);
       case {1}
@@ -118,16 +111,14 @@ for OriInd = 1:OriNum
          Params.Weight = Params.Weight.*Mask;
          Params.Weight = Params.Weight./mean(tovec(Params.Weight(Mask > 0)));
 
-   end
+    end
     
-
     ParamsArray{OriInd} = Params;
-  
 end
 
 mask_eval = sum(Maskarray, 4) >= 3;
-%% using lsmr method 
 
+%% using lsmr method 
 VoxNum = prod(N);
 b = zeros(OriNum*VoxNum, 1, 'single');
 
@@ -151,18 +142,18 @@ function y = afun(x,transp_flag)
    if strcmp(transp_flag,'transp')      % y = A'*x
       y = zeros(VoxNum, 1, 'single');
       x = single(x);                                     % change to single format
-       for orient_i = 1:OriNum          
-            Params = ParamsArray{orient_i};
-            temp = x(((orient_i - 1)*VoxNum+1) : orient_i*VoxNum);            
-            temp = reshape(temp, N);            
-                    
-            output = zeros(size(temp));
-            for ii = 1:numKernel
-                output = output + ifftn(Params.D.*outSMV.SMV_kernel_conj(:,:,:,ii).*fftn(temp.*outSMV.SMV_mask(:,:,:,ii)));
-            end
+      for orient_i = 1:OriNum          
+        Params = ParamsArray{orient_i};
+        temp = x(((orient_i - 1)*VoxNum+1) : orient_i*VoxNum);            
+        temp = reshape(temp, N);            
 
-           y = y + output(:); 
-       end
+        output = zeros(size(temp));
+        for ii = 1:numKernel
+            output = output + ifftn(Params.D.*outSMV.SMV_kernel_conj(:,:,:,ii).*fftn(temp.*outSMV.SMV_mask(:,:,:,ii)));
+        end
+
+        y = y + output(:); 
+      end
               
    elseif strcmp(transp_flag,'notransp') % y = A*x     
        y = zeros(OriNum*VoxNum, 1, 'single');
@@ -183,7 +174,8 @@ function y = afun(x,transp_flag)
        
    end
 end
-%% add frequency shift term 
+
+%% To add frequency shift term 
 % freqshift = chi_mo(end-OriNum+1:end);   % global frequency shift (critical for convergence test)
 % chi_mo = chi_mo(1:end-OriNum);
 % 

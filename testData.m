@@ -1,7 +1,14 @@
+clear
+close all
 
-addpath('~/SimulationData/');
-%% load in QSMParams
-OriNum = 3;
+FilePath = fileparts(mfilename('fullpath'));
+addpath(fullfile(FilePath, 'Evaluation'));
+addpath(fullfile(FilePath, 'SupportFunction'));
+addpath(fullfile(FilePath, 'SupportFunction/NIfTI'));
+addpath(fullfile(FilePath, 'SimulationData'));
+
+%% QSMParams
+OriNum = 5;
 FileStrAppArray = cell(OriNum, 1);
 for OriInd = 1:OriNum
     FileStrAppArray{OriInd} = ['_Ori', num2str(OriInd)];
@@ -34,9 +41,9 @@ end
 maxit = 300;
 tol = 1e-6;     
 
-filenameSave = [pwd, 'SSCOSMOS/SSCOSMOS_Ori_', num2str(QSMParams.OriNum), '_', QSMParams.kernel,'_',num2str(length(QSMParams.radiusArray))];
+filenameSave = fullfile(pwd, ['SSCOSMOS/SSCOSMOS_Ori_', num2str(QSMParams.OriNum), '_', ...
+            QSMParams.kernel,'_',num2str(length(QSMParams.radiusArray))]);
         
-
 switch QSMParams.kernel
     case 'Lap'
          [chi_mo, itn, mask_eval] = SScosmos_Lap_lsmr(QSMParams, maxit, tol);
@@ -61,19 +68,18 @@ chi_tissue_ref = zeros(N);   % chi_tissue referenced
 chi_tissue_ref(maskErode>0) = S.chi_tissue(maskErode>0) - mean((S.chi_tissue(maskErode>0)));
 
 chi_mo_mean = zeros(N);
-chi_mo_mean(maskErode==1) = chi_mo(maskErode==1) - mean(chi_mo(maskErode==1));
+chi_mo_mean(maskErode>0) = chi_mo(maskErode>0) - mean(chi_mo(maskErode>0));
     
-rmse_Lcosmos = 100 * norm((chi_mo_mean(maskErode>0) - chi_tissue_ref(maskErode>0))) / norm(chi_tissue_ref(maskErode>0));
-disp(['RMSE cosmos = ', num2str(rmse_Lcosmos)])
+rmse_cosmos = 100 * norm((chi_mo_mean(maskErode>0) - chi_tissue_ref(maskErode>0))) / norm(chi_tissue_ref(maskErode>0));
+disp(['RMSE cosmos = ', num2str(rmse_cosmos)])
 
-ssim_Lcosmos = compute_ssim(chi_mo_mean, chi_tissue_ref);
-disp(['SSIM cosmos = ', num2str(ssim_Lcosmos)])
+ssim_cosmos = compute_ssim(chi_mo_mean, chi_tissue_ref);
+disp(['SSIM cosmos = ', num2str(ssim_cosmos)])
 
-hfen_Lcosmos = compute_hfen(chi_mo_mean, chi_tissue_ref);
-disp(['HFEN cosmos = ', num2str(hfen_Lcosmos)])
+hfen_cosmos = compute_hfen(chi_mo_mean, chi_tissue_ref);
+disp(['HFEN cosmos = ', num2str(hfen_cosmos)])
 
 % save results
-   
 save([filenameSave, '.mat'], 'chi_mo',  'itn',  'maskErode');
 
 saveNII(chi_mo_mean, filenameSave, QSMParams, 1);   
