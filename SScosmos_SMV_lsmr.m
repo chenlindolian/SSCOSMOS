@@ -65,7 +65,7 @@ for OriInd = 1:OriNum
   
     Params = S.Params;
     Params.D = ifftshift(conv_kernel_rot_c0(Params,Params.TAng));
-    Params.C = 1./(2*pi*Params.TEs.*Params.gamma*Params.B0)*1e6;
+    Params.C = 1./(2*pi*Params.gamma*Params.B0)*1e6;
     
     min_radius = min(QSMParams.radiusArray);
     max_radius = max(QSMParams.radiusArray);
@@ -86,7 +86,7 @@ for OriInd = 1:OriNum
             for kk = 1:numKernel
                 phasetemp = phasetemp + outSMV.SMV_mask(:,:,:,kk).*ifftn(outSMV.SMV_kernel(:,:,:,kk).*Fphi);
             end
-            temp = temp + phasetemp.*weight(:,:,:,echoii);
+            temp = temp + phasetemp/(Params.TEs(echoii)).*weight(:,:,:,echoii);
         end
         temp = temp./(sum(weight,4)+0.00001); % averaging
         fittingDataArray(:,:,:,OriInd) = temp.*Params.C; 
@@ -96,7 +96,7 @@ for OriInd = 1:OriNum
         for kk = 1:numKernel
           phasetemp = phasetemp +  outSMV.SMV_mask(:,:,:,kk).* ifftn(outSMV.SMV_kernel(:,:,:,kk).*Fphi);  
         end
-        fittingDataArray(:,:,:,OriInd) = phasetemp.*Params.C;                         
+        fittingDataArray(:,:,:,OriInd) = phasetemp/Params.TEs.*Params.C;                         
     end
    
     % weight
