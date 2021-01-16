@@ -8,7 +8,7 @@ addpath(fullfile(FilePath, 'SupportFunction/NIfTI'));
 addpath(fullfile(FilePath, 'SimulationData'));
 
 %% QSMParams
-OriNum = 5;
+OriNum = 3;
 FileStrAppArray = cell(OriNum, 1);
 for OriInd = 1:OriNum
     FileStrAppArray{OriInd} = ['_Ori', num2str(OriInd)];
@@ -41,7 +41,7 @@ end
 maxit = 300;
 tol = 1e-6;     
 
-filenameSave = fullfile(pwd, ['SSCOSMOS/SSCOSMOS_Ori_', num2str(QSMParams.OriNum), '_', ...
+filenameSave = fullfile(pwd, ['SSCOSMOS_Ori_', num2str(QSMParams.OriNum), '_', ...
             QSMParams.kernel,'_',num2str(length(QSMParams.radiusArray))]);
         
 switch QSMParams.kernel
