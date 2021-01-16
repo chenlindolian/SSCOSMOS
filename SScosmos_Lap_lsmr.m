@@ -74,7 +74,7 @@ for OriInd = 1:OriNum
     
  Params.D = ifftshift(conv_kernel_rot_c0(Params,Params.TAng));
     
- Params.C = 1./(2*pi*Params.TEs.*Params.gamma*Params.B0)*1e6;
+ Params.C = 1./(2*pi*Params.gamma*Params.B0)*1e6;
   
        
    if Params.nEchoes > 1
@@ -82,12 +82,12 @@ for OriInd = 1:OriNum
         weight = AverageEchoWeight(GREMag,Params.TEs);
          for echoii = 1:Params.nEchoes 
             selectedEcho = Params.echoNums(echoii);
-            temp = temp + LapPhase(GREPhase(:,:,:,selectedEcho), kernel2)./(Params.TEs(selectedEcho)).*weight(:,:,:,selectedEcho);
+            temp = temp + LapPhase(GREPhase(:,:,:,selectedEcho), kernel2)/(Params.TEs(selectedEcho)).*weight(:,:,:,selectedEcho);
          end
         temp = temp./(sum(weight,4)+0.00001); % averaging
         fittingDataArray(:,:,:,OriInd) = temp.*Params.C; 
    else
-        fittingDataArray(:,:,:,OriInd) = LapPhase(GREPhase, kernel2).*Params.C;                        
+        fittingDataArray(:,:,:,OriInd) = LapPhase(GREPhase, kernel2)/Params.TEs.*Params.C;                        
    end
    
  switch QSMParams.dataType
