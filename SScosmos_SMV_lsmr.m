@@ -27,6 +27,7 @@ function  [chi_mo, itn, mask_eval] = SScosmos_SMV_lsmr(QSMParams, maxit, tol)
 
 OriNum = QSMParams.OriNum;
 ParamsArray = cell(OriNum, 1);
+outsmvArray = cell(OriNum, 1);
 
 N = QSMParams.sizeVol;
 voxel_size = QSMParams.voxSize;
@@ -108,12 +109,13 @@ for OriInd = 1:OriNum
 
          Params.Weight = sqrt(sum(single(GREMag(:,:,:,QSMParams.WeightEcho)).^2, 4));
 
-         Params.Weight = Params.Weight.*Mask;
-         Params.Weight = Params.Weight./mean(tovec(Params.Weight(Mask > 0)));
+         Params.Weight = Params.Weight.*Maskarray(:,:,:,OriInd);
+         Params.Weight = Params.Weight./mean(tovec(Params.Weight(Maskarray(:,:,:,OriInd)> 0)));
 
     end
     
     ParamsArray{OriInd} = Params;
+    outsmvArray{OriInd} = outSMV;
 end
 
 mask_eval = sum(Maskarray, 4) >= 3;
@@ -144,12 +146,14 @@ function y = afun(x,transp_flag)
       x = single(x);                                     % change to single format
       for orient_i = 1:OriNum          
         Params = ParamsArray{orient_i};
-        temp = x(((orient_i - 1)*VoxNum+1) : orient_i*VoxNum);            
-        temp = reshape(temp, N);            
-
-        output = zeros(size(temp));
+        outSMV = outsmvArray{orient_i};
+        tempin = x(((orient_i - 1)*VoxNum+1) : orient_i*VoxNum);            
+        tempin = reshape(tempin, N);            
+        tempin = Params.Weight.*tempin;
+        
+        output = zeros(size(tempin));
         for ii = 1:numKernel
-            output = output + ifftn(Params.D.*outSMV.SMV_kernel_conj(:,:,:,ii).*fftn(temp.*outSMV.SMV_mask(:,:,:,ii)));
+            output = output + ifftn(Params.D.*outSMV.SMV_kernel_conj(:,:,:,ii).*fftn(outSMV.SMV_mask(:,:,:,ii).*tempin));
         end
 
         y = y + output(:); 
@@ -163,13 +167,14 @@ function y = afun(x,transp_flag)
         
        for orient_i = 1:OriNum
             Params = ParamsArray{orient_i}; 
+            outSMV = outsmvArray{orient_i};
             DFx = Params.D.*fftn(x);
-            temp = zeros(size(x));
+            tempin = zeros(size(x));
             for ii = 1:numKernel
-                temp = temp + outSMV.SMV_mask(:,:,:,ii).*ifftn(outSMV.SMV_kernel(:,:,:,ii).*DFx);    
+                tempin = tempin + outSMV.SMV_mask(:,:,:,ii).*ifftn(outSMV.SMV_kernel(:,:,:,ii).*DFx);    
             end
-            
-            y(((orient_i - 1)*VoxNum+1) : orient_i*VoxNum) = temp(:);           
+            tempin = Params.Weight.*tempin;
+            y(((orient_i - 1)*VoxNum+1) : orient_i*VoxNum) = tempin(:);           
        end
        
    end
