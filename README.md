@@ -1,7 +1,7 @@
 # SSCOSMOS
 **SMV kernel and Laplacian kernel based SSCOSMOS**
 
-(paper link)
+[paper link](https://doi.org/10.1002/nbm.4517)
 
 Single-step calculation of susceptibility with multiple orientation sampling (SSCOSMOS) was developed to jointly perform background field removal and COSMOS like dipole inversion for quantitative susceptibilty mapping (QSM). It could serve as a better standard than traditional multi-step COSMOS (MSCOSMOS) for gauging single-orientation single-step QSM (SSQSM) methods. 
 
